@@ -22,7 +22,12 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install -e ".[dev]"
-      - run: pytest -q
+      - name: Unit + corpus convert gate
+        run: |
+          test $(ls tests/corpus/pass/*.pdf | wc -l) -ge 20
+          test $(ls tests/corpus/expected/*.json | wc -l) -ge 20
+          test $(ls tests/corpus/golden/*.xlsx | wc -l) -ge 20
+          pytest -q
 
   deploy:
     needs: [test]

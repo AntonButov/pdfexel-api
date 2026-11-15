@@ -1,0 +1,21 @@
+{
+  "tables": [
+    {
+      "page": 1,
+      "rows": [
+        [
+          "Label",
+          "URL"
+        ],
+        [
+          "Docs",
+          "https://example.com"
+        ],
+        [
+          "Home",
+          "https://example.org"
+        ]
+      ]
+    }
+  ]
+}

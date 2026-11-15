@@ -23,9 +23,11 @@ Env:
 ```bash
 python3.12 -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"
-pytest -q
+pytest -q   # unit + 20-PDF corpus gate (required on every converter change / CI)
 uvicorn pdfexel_api.api:app --port 8133
 ```
+
+Corpus: `tests/corpus/pass/*.pdf` + `expected/*.json` + `golden/*.xlsx` — see `tests/test_corpus.py`.
 
 ## Deploy
 

@@ -1,0 +1,21 @@
+{
+  "tables": [
+    {
+      "page": 1,
+      "rows": [
+        [
+          "Product",
+          "Score"
+        ],
+        [
+          "Alpha",
+          "9"
+        ],
+        [
+          "Beta",
+          "7"
+        ]
+      ]
+    }
+  ]
+}

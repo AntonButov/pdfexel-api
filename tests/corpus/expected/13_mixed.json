@@ -1,0 +1,24 @@
+{
+  "tables": [
+    {
+      "page": 1,
+      "rows": [
+        [
+          "Label",
+          "Amount",
+          "Note"
+        ],
+        [
+          "total",
+          "1000.00",
+          "ok"
+        ],
+        [
+          "rate",
+          "25.50%",
+          "quarter"
+        ]
+      ]
+    }
+  ]
+}
