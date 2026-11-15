@@ -1,14 +1,60 @@
 from __future__ import annotations
 
-from fastapi import FastAPI, File, HTTPException, UploadFile
+import logging
+import time
+import uuid
+
+from fastapi import FastAPI, File, HTTPException, Request, UploadFile
 from fastapi.responses import Response
 
+from pdfexel_api.logging_setup import configure_logging
 from pdfexel_api.pipeline import ConvertFail, ConvertOk, convert_pdf_bytes
 from pdfexel_api.settings import MAX_BYTES
+
+configure_logging()
+log = logging.getLogger("pdfexel_api.api")
 
 app = FastAPI(title="pdfexel-api", version="0.1.0")
 
 XLSX_TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+
+
+@app.middleware("http")
+async def request_log_middleware(request: Request, call_next):
+    rid = request.headers.get("x-request-id") or uuid.uuid4().hex[:12]
+    request.state.request_id = rid
+    t0 = time.perf_counter()
+    client = request.client.host if request.client else "-"
+    log.info(
+        "rid=%s step=http.in method=%s path=%s client=%s",
+        rid,
+        request.method,
+        request.url.path,
+        client,
+    )
+    try:
+        response = await call_next(request)
+    except Exception:
+        ms = int((time.perf_counter() - t0) * 1000)
+        log.exception(
+            "rid=%s step=http.exception method=%s path=%s ms=%d",
+            rid,
+            request.method,
+            request.url.path,
+            ms,
+        )
+        raise
+    ms = int((time.perf_counter() - t0) * 1000)
+    log.info(
+        "rid=%s step=http.out method=%s path=%s status=%s ms=%d",
+        rid,
+        request.method,
+        request.url.path,
+        response.status_code,
+        ms,
+    )
+    response.headers["X-Request-Id"] = rid
+    return response
 
 
 @app.get("/health")
@@ -17,21 +63,43 @@ def health() -> dict[str, str]:
 
 
 @app.post("/convert")
-async def convert(file: UploadFile = File(...)) -> Response:
+async def convert(request: Request, file: UploadFile = File(...)) -> Response:
+    rid = getattr(request.state, "request_id", uuid.uuid4().hex[:12])
     name = file.filename or "upload.pdf"
+    log.info("rid=%s step=convert.accept filename=%r content_type=%r", rid, name, file.content_type)
+
     if not name.lower().endswith(".pdf"):
+        log.warning("rid=%s step=convert.reject reason=not_pdf filename=%r", rid, name)
         raise HTTPException(status_code=400, detail="ожидается файл PDF")
 
     raw = await file.read()
+    log.info("rid=%s step=convert.read bytes=%d", rid, len(raw))
     if not raw:
+        log.warning("rid=%s step=convert.reject reason=empty", rid)
         raise HTTPException(status_code=400, detail="пустой файл")
     if len(raw) > MAX_BYTES:
+        log.warning("rid=%s step=convert.reject reason=too_large bytes=%d max=%d", rid, len(raw), MAX_BYTES)
         raise HTTPException(status_code=400, detail=f"файл слишком большой (макс. {MAX_BYTES} байт)")
 
-    result = await convert_pdf_bytes(raw, name)
+    result = await convert_pdf_bytes(raw, name, request_id=rid)
     if isinstance(result, ConvertFail):
+        log.warning(
+            "rid=%s step=convert.fail status=%s detail=%r",
+            rid,
+            result.status_code,
+            result.detail,
+        )
         raise HTTPException(status_code=result.status_code, detail=result.detail)
 
     assert isinstance(result, ConvertOk)
-    headers = {"Content-Disposition": f'attachment; filename="{result.filename}"'}
+    log.info(
+        "rid=%s step=convert.ok out=%r xlsx_bytes=%d",
+        rid,
+        result.filename,
+        len(result.content),
+    )
+    headers = {
+        "Content-Disposition": f'attachment; filename="{result.filename}"',
+        "X-Request-Id": rid,
+    }
     return Response(content=result.content, media_type=XLSX_TYPE, headers=headers)

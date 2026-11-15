@@ -79,7 +79,7 @@ async def test_pipeline_no_tables() -> None:
 def test_convert_endpoint_streams_xlsx() -> None:
     xlsx = b"PK\x03\x04workbook"
 
-    async def fake_convert(pdf_bytes: bytes, filename: str):
+    async def fake_convert(pdf_bytes: bytes, filename: str, **kwargs):
         return ConvertOk(filename="demo.xlsx", content=xlsx)
 
     with patch("pdfexel_api.api.convert_pdf_bytes", side_effect=fake_convert):
