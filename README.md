@@ -17,6 +17,7 @@ Env:
 - `JSON_STAND_URL` (default `http://127.0.0.1:8132/convert`)
 - `STAND_TIMEOUT_S` (default `120`)
 - `MAX_UPLOAD_BYTES` (default 25 MB)
+- `JOBS_DIR` (default `/data/jobs`) — каждый convert пишется в `{JOBS_DIR}/{YYYY-MM-DD}/{request_id}/` (`input.pdf`, `result.xlsx`, `meta.json`). На VPS: `/var/lib/pdfexel/jobs`.
 
 ## Local
 

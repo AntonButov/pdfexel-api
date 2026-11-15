@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+from pathlib import Path
 
 
 def pdf_stand_url() -> str:
@@ -9,6 +10,10 @@ def pdf_stand_url() -> str:
 
 def json_stand_url() -> str:
     return os.environ.get("JSON_STAND_URL", "http://127.0.0.1:8132/convert").rstrip("/")
+
+
+def jobs_dir() -> Path:
+    return Path(os.environ.get("JOBS_DIR", "/data/jobs"))
 
 
 TIMEOUT_S = float(os.environ.get("STAND_TIMEOUT_S", "120"))

@@ -7,6 +7,9 @@ services:
       - PDF_STAND_URL=http://host.docker.internal:8131/parse
       - JSON_STAND_URL=http://host.docker.internal:8132/convert
       - STAND_TIMEOUT_S=120
+      - JOBS_DIR=/data/jobs
+    volumes:
+      - /var/lib/pdfexel/jobs:/data/jobs
     extra_hosts:
       - "host.docker.internal:host-gateway"
     restart: unless-stopped

@@ -76,13 +76,16 @@ async def test_pipeline_no_tables() -> None:
     assert "таблиц" in result.detail
 
 
-def test_convert_endpoint_streams_xlsx() -> None:
+def test_convert_endpoint_streams_xlsx(tmp_path) -> None:
     xlsx = b"PK\x03\x04workbook"
 
     async def fake_convert(pdf_bytes: bytes, filename: str, **kwargs):
         return ConvertOk(filename="demo.xlsx", content=xlsx)
 
-    with patch("pdfexel_api.api.convert_pdf_bytes", side_effect=fake_convert):
+    with (
+        patch("pdfexel_api.jobs.jobs_dir", return_value=tmp_path),
+        patch("pdfexel_api.api.convert_pdf_bytes", side_effect=fake_convert),
+    ):
         r = client.post("/convert", files={"file": ("demo.pdf", b"%PDF", "application/pdf")})
 
     assert r.status_code == 200

@@ -7,6 +7,7 @@ import uuid
 from fastapi import FastAPI, File, HTTPException, Request, UploadFile
 from fastapi.responses import Response
 
+from pdfexel_api.jobs import save_input_pdf, save_result_xlsx, write_meta
 from pdfexel_api.logging_setup import configure_logging
 from pdfexel_api.pipeline import ConvertFail, ConvertOk, convert_pdf_bytes
 from pdfexel_api.settings import MAX_BYTES
@@ -65,6 +66,7 @@ def health() -> dict[str, str]:
 @app.post("/convert")
 async def convert(request: Request, file: UploadFile = File(...)) -> Response:
     rid = getattr(request.state, "request_id", uuid.uuid4().hex[:12])
+    client = request.client.host if request.client else None
     name = file.filename or "upload.pdf"
     log.info("rid=%s step=convert.accept filename=%r content_type=%r", rid, name, file.content_type)
 
@@ -81,8 +83,32 @@ async def convert(request: Request, file: UploadFile = File(...)) -> Response:
         log.warning("rid=%s step=convert.reject reason=too_large bytes=%d max=%d", rid, len(raw), MAX_BYTES)
         raise HTTPException(status_code=400, detail=f"файл слишком большой (макс. {MAX_BYTES} байт)")
 
+    input_path = save_input_pdf(rid, raw, name)
+    write_meta(
+        rid,
+        {
+            "status": "accepted",
+            "filename": name,
+            "client": client,
+            "input_bytes": len(raw),
+            "input_path": str(input_path),
+        },
+    )
+
     result = await convert_pdf_bytes(raw, name, request_id=rid)
     if isinstance(result, ConvertFail):
+        write_meta(
+            rid,
+            {
+                "status": "fail",
+                "filename": name,
+                "client": client,
+                "input_bytes": len(raw),
+                "input_path": str(input_path),
+                "error_status": result.status_code,
+                "error_detail": result.detail,
+            },
+        )
         log.warning(
             "rid=%s step=convert.fail status=%s detail=%r",
             rid,
@@ -92,11 +118,26 @@ async def convert(request: Request, file: UploadFile = File(...)) -> Response:
         raise HTTPException(status_code=result.status_code, detail=result.detail)
 
     assert isinstance(result, ConvertOk)
+    result_path = save_result_xlsx(rid, result.content, result.filename)
+    write_meta(
+        rid,
+        {
+            "status": "ok",
+            "filename": name,
+            "client": client,
+            "input_bytes": len(raw),
+            "input_path": str(input_path),
+            "result_filename": result.filename,
+            "result_bytes": len(result.content),
+            "result_path": str(result_path),
+        },
+    )
     log.info(
-        "rid=%s step=convert.ok out=%r xlsx_bytes=%d",
+        "rid=%s step=convert.ok out=%r xlsx_bytes=%d job=%s",
         rid,
         result.filename,
         len(result.content),
+        result_path.parent,
     )
     headers = {
         "Content-Disposition": f'attachment; filename="{result.filename}"',
