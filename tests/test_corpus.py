@@ -80,7 +80,7 @@ async def test_corpus_convert_sequence(stem: str, pdf_path) -> None:
 
 def test_corpus_manifest_complete() -> None:
     pdfs = pass_pdfs()
-    assert len(pdfs) >= 20, f"expected ≥20 pass PDFs, got {len(pdfs)}"
+    assert len(pdfs) >= 25, f"expected ≥25 pass PDFs (20 base + 5 hard), got {len(pdfs)}"
     missing_exp = [p.stem for p in pdfs if not expected_path(p.stem).exists()]
     missing_gold = [p.stem for p in pdfs if not (GOLDEN_DIR / f"{p.stem}.xlsx").exists()]
     assert not missing_exp, f"missing expected JSON: {missing_exp}"

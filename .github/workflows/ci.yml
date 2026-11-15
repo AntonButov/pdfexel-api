@@ -15,7 +15,8 @@ jobs:
       - run: pip install -e ".[dev]"
       - name: Unit + corpus convert gate
         run: |
-          test $(ls tests/corpus/pass/*.pdf | wc -l) -ge 20
-          test $(ls tests/corpus/expected/*.json | wc -l) -ge 20
-          test $(ls tests/corpus/golden/*.xlsx | wc -l) -ge 20
+          test $(ls tests/corpus/pass/*.pdf | wc -l) -ge 25
+          test $(ls tests/corpus/expected/*.json | wc -l) -ge 25
+          test $(ls tests/corpus/golden/*.xlsx | wc -l) -ge 25
+          test $(ls tests/corpus/pass/H0*.pdf | wc -l) -eq 5
           pytest -q
