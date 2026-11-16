@@ -102,6 +102,8 @@ async def convert_pdf_bytes(
             return ConvertFail(422, "в PDF не найдено таблиц")
 
         payload = {"tables": tables}
+        if parsed.get("sheets"):
+            payload["sheets"] = parsed["sheets"]
         json_bytes = json.dumps(payload, ensure_ascii=False).encode("utf-8")
         log.info(
             "rid=%s step=json_stand.request url=%s json_bytes=%d",
