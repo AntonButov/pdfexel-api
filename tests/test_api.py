@@ -92,3 +92,28 @@ def test_convert_endpoint_streams_xlsx(tmp_path) -> None:
     assert r.content == xlsx
     assert "spreadsheetml" in r.headers["content-type"]
     assert "demo.xlsx" in r.headers["content-disposition"]
+
+
+def test_convert_cyrillic_filename_does_not_500(tmp_path) -> None:
+    xlsx = b"PK\x03\x04workbook"
+    out_name = "счет Резиденция детства.xlsx"
+
+    async def fake_convert(pdf_bytes: bytes, filename: str, **kwargs):
+        return ConvertOk(filename=out_name, content=xlsx)
+
+    with (
+        patch("pdfexel_api.jobs.jobs_dir", return_value=tmp_path),
+        patch("pdfexel_api.api.convert_pdf_bytes", side_effect=fake_convert),
+    ):
+        r = client.post(
+            "/convert",
+            files={"file": ("счет Резиденция детства.pdf", b"%PDF", "application/pdf")},
+        )
+
+    assert r.status_code == 200
+    assert r.content == xlsx
+    cd = r.headers["content-disposition"]
+    assert "filename=" in cd
+    assert "filename*=UTF-8''" in cd
+    assert "%D1%81%D1%87%D0%B5%D1%82" in cd
+    cd.encode("latin-1")

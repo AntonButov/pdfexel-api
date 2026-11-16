@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import logging
+import re
 import time
 import uuid
+from urllib.parse import quote
 
 from fastapi import FastAPI, File, HTTPException, Request, UploadFile
 from fastapi.responses import Response
@@ -18,6 +20,17 @@ log = logging.getLogger("pdfexel_api.api")
 app = FastAPI(title="pdfexel-api", version="0.1.0")
 
 XLSX_TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+
+_SAFE_FILENAME = re.compile(r"[^A-Za-z0-9._-]+")
+
+
+def content_disposition_attachment(filename: str) -> str:
+    """RFC 6266 / 5987: ASCII fallback + UTF-8 filename* (Starlette is latin-1)."""
+    ascii_name = _SAFE_FILENAME.sub("_", filename).strip("._") or "download.xlsx"
+    if not ascii_name.lower().endswith(".xlsx"):
+        ascii_name = f"{ascii_name}.xlsx"
+    encoded = quote(filename, safe="")
+    return f"attachment; filename=\"{ascii_name}\"; filename*=UTF-8''{encoded}"
 
 
 @app.middleware("http")
@@ -140,7 +153,7 @@ async def convert(request: Request, file: UploadFile = File(...)) -> Response:
         result_path.parent,
     )
     headers = {
-        "Content-Disposition": f'attachment; filename="{result.filename}"',
+        "Content-Disposition": content_disposition_attachment(result.filename),
         "X-Request-Id": rid,
     }
     return Response(content=result.content, media_type=XLSX_TYPE, headers=headers)
