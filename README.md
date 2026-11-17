@@ -2,14 +2,20 @@
 
 Оркестратор **PDF → Excel** для [pdfexel.ru](https://pdfexel.ru):
 
-`POST /convert` (multipart PDF) → `pdf-stand` → `json-stand` → `.xlsx` attachment.
+Email OTP → cookie session → `POST /convert` (multipart PDF) → `pdf-stand` → `json-stand` → `.xlsx`.
+
+Без сессии `POST /convert` отвечает **401** и не запускает пайплайн.
 
 ## API
 
 | Method | Path | Description |
 |--------|------|-------------|
 | GET | `/health` | `{"status":"ok"}` |
-| POST | `/convert` | multipart `file` (PDF) → XLSX download |
+| POST | `/auth/request-code` | `{email}` → OTP на почту |
+| POST | `/auth/verify` | `{email,code}` → Set-Cookie `pdfexel_session` |
+| GET | `/auth/me` | текущий email или 401 |
+| POST | `/auth/logout` | сброс сессии |
+| POST | `/convert` | multipart `file` (PDF) → XLSX (**нужна сессия**) |
 
 Env:
 
@@ -17,14 +23,18 @@ Env:
 - `JSON_STAND_URL` (default `http://127.0.0.1:8132/convert`)
 - `STAND_TIMEOUT_S` (default `120`)
 - `MAX_UPLOAD_BYTES` (default 25 MB)
-- `JOBS_DIR` (default `/data/jobs`) — каждый convert пишется в `{JOBS_DIR}/{YYYY-MM-DD}/{request_id}/` (`input.pdf`, `result.xlsx`, `meta.json`). На VPS: `/var/lib/pdfexel/jobs`.
+- `JOBS_DIR` (default `/data/jobs`) — на VPS: `/var/lib/pdfexel/jobs`
+- `SMTP_HOST` / `SMTP_PORT` / `SMTP_USER` / `SMTP_PASSWORD` / `SMTP_FROM` — OTP (как gosphoto: `mail.antonbutov.com`)
+- `AUTH_SECRET` — HMAC для хеша кода
+- `AUTH_COOKIE_SECURE` — `1` в проде, `0` для локального http
 
 ## Local
 
 ```bash
 python3.12 -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"
-pytest -q   # unit + 20-PDF corpus gate (required on every converter change / CI)
+export AUTH_COOKIE_SECURE=0 SMTP_PASSWORD=…   # для живой почты
+pytest -q
 uvicorn pdfexel_api.api:app --port 8133
 ```
 
@@ -35,4 +45,11 @@ Corpus: `tests/corpus/pass/*.pdf` + `expected/*.json` + `golden/*.xlsx` — see 
 Docker Compose publishes **8133→8080** on `80.87.196.33` (`/opt/pdfexel-api`).  
 CI: push `main` → test → rsync + `docker compose up -d --build`.
 
-Secrets: `DEPLOY_SSH_PRIVATE_KEY`, `DEPLOY_USER` (same as other stands).
+На сервере в `/opt/pdfexel-api/.env` (не в git):
+
+```
+SMTP_PASSWORD=…
+AUTH_SECRET=…
+```
+
+Secrets CI: `DEPLOY_SSH_PRIVATE_KEY`, `DEPLOY_USER`.

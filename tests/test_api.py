@@ -7,11 +7,23 @@ import httpx
 import pytest
 from fastapi.testclient import TestClient
 
+from pdfexel_api import settings
 from pdfexel_api.api import app
+from pdfexel_api.auth_store import store
 from pdfexel_api.pipeline import ConvertFail, ConvertOk, convert_pdf_bytes
 
 
 client = TestClient(app)
+
+
+@pytest.fixture(autouse=True)
+def _auth_session():
+    store.clear()
+    sid = store.create_session("test@pdfexel.ru")
+    client.cookies.set(settings.AUTH_COOKIE_NAME, sid)
+    yield
+    store.clear()
+    client.cookies.clear()
 
 
 def test_health() -> None:

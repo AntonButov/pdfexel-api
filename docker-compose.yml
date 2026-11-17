@@ -8,6 +8,13 @@ services:
       - JSON_STAND_URL=http://host.docker.internal:8132/convert
       - STAND_TIMEOUT_S=120
       - JOBS_DIR=/data/jobs
+      - SMTP_HOST=${SMTP_HOST:-mail.antonbutov.com}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_USER=${SMTP_USER:-mail@antonbutov.com}
+      - SMTP_PASSWORD=${SMTP_PASSWORD:-}
+      - SMTP_FROM=${SMTP_FROM:-mail@antonbutov.com}
+      - AUTH_COOKIE_SECURE=${AUTH_COOKIE_SECURE:-1}
+      - AUTH_SECRET=${AUTH_SECRET:-}
     volumes:
       - /var/lib/pdfexel/jobs:/data/jobs
     extra_hosts:
