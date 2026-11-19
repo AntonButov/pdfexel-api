@@ -17,7 +17,8 @@ def jobs_dir() -> Path:
 
 
 def ocr_interest_log() -> Path:
-    return Path(os.environ.get("OCR_INTEREST_LOG", str(jobs_dir().parent / "ocr-interest.jsonl")))
+    # Keep on the jobs volume (/data/jobs → /var/lib/pdfexel/jobs), not ephemeral /data.
+    return Path(os.environ.get("OCR_INTEREST_LOG", str(jobs_dir() / "ocr-interest.jsonl")))
 
 
 TIMEOUT_S = float(os.environ.get("STAND_TIMEOUT_S", "120"))
