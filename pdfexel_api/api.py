@@ -190,13 +190,11 @@ def auth_logout(request: Request) -> JSONResponse:
 @app.post("/convert")
 async def convert(request: Request, file: UploadFile = File(...)) -> Response:
     rid = getattr(request.state, "request_id", uuid.uuid4().hex[:12])
-    email = require_email(request)
     client = request.client.host if request.client else None
     name = file.filename or "upload.pdf"
     log.info(
-        "rid=%s step=convert.accept email=%s filename=%r content_type=%r",
+        "rid=%s step=convert.accept filename=%r content_type=%r",
         rid,
-        email,
         name,
         file.content_type,
     )
@@ -224,7 +222,6 @@ async def convert(request: Request, file: UploadFile = File(...)) -> Response:
         rid,
         {
             "status": "accepted",
-            "email": email,
             "filename": name,
             "client": client,
             "input_bytes": len(raw),
@@ -238,7 +235,6 @@ async def convert(request: Request, file: UploadFile = File(...)) -> Response:
             rid,
             {
                 "status": "fail",
-                "email": email,
                 "filename": name,
                 "client": client,
                 "input_bytes": len(raw),
@@ -261,7 +257,6 @@ async def convert(request: Request, file: UploadFile = File(...)) -> Response:
         rid,
         {
             "status": "ok",
-            "email": email,
             "filename": name,
             "client": client,
             "input_bytes": len(raw),
@@ -272,9 +267,8 @@ async def convert(request: Request, file: UploadFile = File(...)) -> Response:
         },
     )
     log.info(
-        "rid=%s step=convert.ok email=%s out=%r xlsx_bytes=%d job=%s",
+        "rid=%s step=convert.ok out=%r xlsx_bytes=%d job=%s",
         rid,
-        email,
         result.filename,
         len(result.content),
         result_path.parent,

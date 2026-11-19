@@ -63,14 +63,7 @@ def test_verify_bad_code() -> None:
     assert r.status_code == 400
 
 
-def test_convert_requires_auth() -> None:
-    r = client.post("/convert", files={"file": ("x.pdf", b"%PDF", "application/pdf")})
-    assert r.status_code == 401
-    assert r.json()["detail"] == "auth_required"
-
-
-def test_convert_with_session_ok(tmp_path) -> None:
-    _login()
+def test_convert_without_auth_ok(tmp_path) -> None:
     xlsx = b"PK\x03\x04workbook"
 
     async def fake_convert(pdf_bytes: bytes, filename: str, **kwargs):

@@ -4,26 +4,13 @@ import json
 from pathlib import Path
 from unittest.mock import patch
 
-import pytest
 from fastapi.testclient import TestClient
 
-from pdfexel_api import settings
 from pdfexel_api.api import app
-from pdfexel_api.auth_store import store
 from pdfexel_api.pipeline import ConvertOk
 
 
 client = TestClient(app)
-
-
-@pytest.fixture(autouse=True)
-def _auth_session():
-    store.clear()
-    sid = store.create_session("test@pdfexel.ru")
-    client.cookies.set(settings.AUTH_COOKIE_NAME, sid)
-    yield
-    store.clear()
-    client.cookies.clear()
 
 
 def test_convert_persists_input_and_result(tmp_path: Path) -> None:
