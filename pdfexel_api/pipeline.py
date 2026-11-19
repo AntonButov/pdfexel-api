@@ -24,6 +24,7 @@ class ConvertOk:
 class ConvertFail:
     status_code: int
     detail: str
+    code: str | None = None
 
 
 async def convert_pdf_bytes(
@@ -85,19 +86,36 @@ async def convert_pdf_bytes(
 
         if not parsed.get("ok"):
             errors = parsed.get("errors") or []
-            msg = errors[0].get("message") if errors else "не удалось разобрать PDF"
+            err0 = errors[0] if errors else {}
+            code = err0.get("code") if isinstance(err0, dict) else None
+            msg = err0.get("message") if isinstance(err0, dict) else "не удалось разобрать PDF"
+            if parsed.get("scanned") or code == "scanned_pdf":
+                log.warning("rid=%s step=pdf_stand.scanned detail=%r", rid, msg)
+                return ConvertFail(
+                    422,
+                    str(msg or "PDF выглядит как скан — нужен OCR"),
+                    code="scanned_pdf",
+                )
             log.warning("rid=%s step=pdf_stand.not_ok detail=%r", rid, msg)
-            return ConvertFail(422, str(msg))
+            return ConvertFail(422, str(msg), code=str(code) if code else None)
 
         tables = parsed.get("tables") or []
         pages = parsed.get("page_count") or parsed.get("pages")
         log.info(
-            "rid=%s step=pdf_stand.ok tables=%d pages=%s",
+            "rid=%s step=pdf_stand.ok tables=%d pages=%s scanned=%s",
             rid,
             len(tables),
             pages,
+            bool(parsed.get("scanned")),
         )
         if not tables:
+            if parsed.get("scanned"):
+                log.warning("rid=%s step=pdf_stand.scanned_no_tables", rid)
+                return ConvertFail(
+                    422,
+                    "PDF выглядит как скан — нужен OCR",
+                    code="scanned_pdf",
+                )
             log.warning("rid=%s step=pdf_stand.no_tables", rid)
             return ConvertFail(422, "в PDF не найдено таблиц")
 

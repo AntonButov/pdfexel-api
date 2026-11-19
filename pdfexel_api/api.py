@@ -15,6 +15,7 @@ from pdfexel_api.auth_store import store
 from pdfexel_api.jobs import save_input_pdf, save_result_xlsx, write_meta
 from pdfexel_api.logging_setup import configure_logging
 from pdfexel_api.mailer import MailerConfigError, MailerSmtpError, send_otp
+from pdfexel_api.ocr_interest import append_interest
 from pdfexel_api.pipeline import ConvertFail, ConvertOk, convert_pdf_bytes
 
 configure_logging()
@@ -35,6 +36,12 @@ class EmailBody(BaseModel):
 class VerifyBody(BaseModel):
     email: str = Field(..., min_length=3, max_length=254)
     code: str = Field(..., min_length=4, max_length=12)
+
+
+class OcrInterestBody(BaseModel):
+    filename: str = Field(default="", max_length=400)
+    source: str = Field(default="scan_offer", max_length=80)
+    email: str = Field(default="", max_length=254)
 
 
 def content_disposition_attachment(filename: str) -> str:
@@ -187,6 +194,32 @@ def auth_logout(request: Request) -> JSONResponse:
     return resp
 
 
+@app.post("/ocr-interest")
+def ocr_interest(body: OcrInterestBody, request: Request) -> dict[str, bool]:
+    """Log paid-OCR demand for a scanned PDF (feature still in development)."""
+    rid = getattr(request.state, "request_id", uuid.uuid4().hex[:12])
+    email = ""
+    sid = request.cookies.get(settings.AUTH_COOKIE_NAME)
+    if sid:
+        email = store.get_email(sid) or ""
+    if body.email.strip():
+        try:
+            email = normalize_email(body.email)
+        except HTTPException:
+            email = email or body.email.strip().lower()[:254]
+    append_interest(
+        {
+            "rid": rid,
+            "email": email,
+            "filename": (body.filename or "").strip()[:400],
+            "source": (body.source or "scan_offer").strip()[:80],
+            "ip": client_ip(request),
+            "ua": (request.headers.get("user-agent") or "")[:300],
+        }
+    )
+    return {"ok": True}
+
+
 @app.post("/convert")
 async def convert(request: Request, file: UploadFile = File(...)) -> Response:
     rid = getattr(request.state, "request_id", uuid.uuid4().hex[:12])
@@ -241,14 +274,29 @@ async def convert(request: Request, file: UploadFile = File(...)) -> Response:
                 "input_path": str(input_path),
                 "error_status": result.status_code,
                 "error_detail": result.detail,
+                "error_code": result.code,
             },
         )
         log.warning(
-            "rid=%s step=convert.fail status=%s detail=%r",
+            "rid=%s step=convert.fail status=%s code=%s detail=%r",
             rid,
             result.status_code,
+            result.code,
             result.detail,
         )
+        if result.code == "scanned_pdf":
+            raise HTTPException(
+                status_code=422,
+                detail={
+                    "code": "scanned_pdf",
+                    "message": result.detail,
+                    "offer": {
+                        "title": "Это скан — нужен OCR",
+                        "price_rub": 99,
+                        "cta": "Распознать за 99 ₽",
+                    },
+                },
+            )
         raise HTTPException(status_code=result.status_code, detail=result.detail)
 
     assert isinstance(result, ConvertOk)

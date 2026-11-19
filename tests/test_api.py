@@ -76,6 +76,65 @@ async def test_pipeline_no_tables() -> None:
     assert "таблиц" in result.detail
 
 
+@pytest.mark.asyncio
+async def test_pipeline_scanned_pdf() -> None:
+    parse_resp = httpx.Response(
+        200,
+        json={
+            "ok": False,
+            "scanned": True,
+            "tables": [],
+            "errors": [{"code": "scanned_pdf", "message": "PDF выглядит как скан — нужен OCR"}],
+        },
+    )
+    mock_client = AsyncMock()
+    mock_client.__aenter__.return_value = mock_client
+    mock_client.__aexit__.return_value = None
+    mock_client.post = AsyncMock(return_value=parse_resp)
+
+    with patch("pdfexel_api.pipeline.httpx.AsyncClient", return_value=mock_client):
+        result = await convert_pdf_bytes(b"%PDF", "scan.pdf")
+
+    assert isinstance(result, ConvertFail)
+    assert result.code == "scanned_pdf"
+    assert "скан" in result.detail.lower() or "OCR" in result.detail
+
+
+def test_convert_scanned_returns_offer(tmp_path) -> None:
+    async def fake_convert(pdf_bytes: bytes, filename: str, **kwargs):
+        return ConvertFail(422, "PDF выглядит как скан — нужен OCR", code="scanned_pdf")
+
+    with (
+        patch("pdfexel_api.jobs.jobs_dir", return_value=tmp_path),
+        patch("pdfexel_api.api.convert_pdf_bytes", side_effect=fake_convert),
+    ):
+        r = client.post("/convert", files={"file": ("scan.pdf", b"%PDF", "application/pdf")})
+
+    assert r.status_code == 422
+    detail = r.json()["detail"]
+    assert detail["code"] == "scanned_pdf"
+    assert detail["offer"]["price_rub"] == 99
+
+
+def test_ocr_interest_appends(tmp_path, monkeypatch) -> None:
+    log_path = tmp_path / "ocr-interest.jsonl"
+    monkeypatch.setenv("OCR_INTEREST_LOG", str(log_path))
+    # reload path helper picks env at call time via ocr_interest_log()
+    r = client.post(
+        "/ocr-interest",
+        json={"filename": "УПД 12.pdf", "source": "scan_offer"},
+    )
+    assert r.status_code == 200
+    assert r.json() == {"ok": True}
+    assert log_path.exists()
+    line = log_path.read_text(encoding="utf-8").strip().splitlines()[-1]
+    import json
+
+    row = json.loads(line)
+    assert row["filename"] == "УПД 12.pdf"
+    assert row["source"] == "scan_offer"
+
+
 def test_convert_endpoint_streams_xlsx(tmp_path) -> None:
     xlsx = b"PK\x03\x04workbook"
 

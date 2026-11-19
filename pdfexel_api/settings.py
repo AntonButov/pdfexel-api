@@ -16,6 +16,10 @@ def jobs_dir() -> Path:
     return Path(os.environ.get("JOBS_DIR", "/data/jobs"))
 
 
+def ocr_interest_log() -> Path:
+    return Path(os.environ.get("OCR_INTEREST_LOG", str(jobs_dir().parent / "ocr-interest.jsonl")))
+
+
 TIMEOUT_S = float(os.environ.get("STAND_TIMEOUT_S", "120"))
 MAX_BYTES = int(os.environ.get("MAX_UPLOAD_BYTES", str(25 * 1024 * 1024)))
 
