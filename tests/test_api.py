@@ -113,7 +113,9 @@ def test_convert_scanned_returns_offer(tmp_path) -> None:
     assert r.status_code == 422
     detail = r.json()["detail"]
     assert detail["code"] == "scanned_pdf"
-    assert detail["offer"]["price_rub"] == 99
+    assert detail["offer"]["price_rub"] == 299
+    assert detail["offer"]["period"] == "month"
+    assert "мес" in detail["offer"]["cta"]
 
 
 def test_ocr_interest_appends(tmp_path, monkeypatch) -> None:
@@ -122,7 +124,12 @@ def test_ocr_interest_appends(tmp_path, monkeypatch) -> None:
     # reload path helper picks env at call time via ocr_interest_log()
     r = client.post(
         "/ocr-interest",
-        json={"filename": "УПД 12.pdf", "source": "scan_offer"},
+        json={
+            "filename": "УПД 12.pdf",
+            "source": "scan_offer_pay",
+            "offer": "subscription_299",
+            "price_rub": 299,
+        },
     )
     assert r.status_code == 200
     assert r.json() == {"ok": True}
@@ -132,7 +139,9 @@ def test_ocr_interest_appends(tmp_path, monkeypatch) -> None:
 
     row = json.loads(line)
     assert row["filename"] == "УПД 12.pdf"
-    assert row["source"] == "scan_offer"
+    assert row["source"] == "scan_offer_pay"
+    assert row["offer"] == "subscription_299"
+    assert row["price_rub"] == 299
 
 
 def test_convert_endpoint_streams_xlsx(tmp_path) -> None:

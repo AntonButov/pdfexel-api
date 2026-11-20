@@ -42,6 +42,8 @@ class OcrInterestBody(BaseModel):
     filename: str = Field(default="", max_length=400)
     source: str = Field(default="scan_offer", max_length=80)
     email: str = Field(default="", max_length=254)
+    offer: str = Field(default="", max_length=80)
+    price_rub: int | None = Field(default=None, ge=0, le=1_000_000)
 
 
 def content_disposition_attachment(filename: str) -> str:
@@ -207,16 +209,20 @@ def ocr_interest(body: OcrInterestBody, request: Request) -> dict[str, bool]:
             email = normalize_email(body.email)
         except HTTPException:
             email = email or body.email.strip().lower()[:254]
-    append_interest(
-        {
-            "rid": rid,
-            "email": email,
-            "filename": (body.filename or "").strip()[:400],
-            "source": (body.source or "scan_offer").strip()[:80],
-            "ip": client_ip(request),
-            "ua": (request.headers.get("user-agent") or "")[:300],
-        }
-    )
+    row: dict = {
+        "rid": rid,
+        "email": email,
+        "filename": (body.filename or "").strip()[:400],
+        "source": (body.source or "scan_offer").strip()[:80],
+        "ip": client_ip(request),
+        "ua": (request.headers.get("user-agent") or "")[:300],
+    }
+    offer = (body.offer or "").strip()[:80]
+    if offer:
+        row["offer"] = offer
+    if body.price_rub is not None:
+        row["price_rub"] = body.price_rub
+    append_interest(row)
     return {"ok": True}
 
 
@@ -292,8 +298,9 @@ async def convert(request: Request, file: UploadFile = File(...)) -> Response:
                     "message": result.detail,
                     "offer": {
                         "title": "Это скан — нужен OCR",
-                        "price_rub": 99,
-                        "cta": "Распознать за 99 ₽",
+                        "price_rub": 299,
+                        "period": "month",
+                        "cta": "Оплатить 299 ₽/мес",
                     },
                 },
             )
