@@ -117,7 +117,7 @@ async def convert_pdf_bytes(
                     code="scanned_pdf",
                 )
             log.warning("rid=%s step=pdf_stand.no_tables", rid)
-            return ConvertFail(422, "в PDF не найдено таблиц")
+            return ConvertFail(422, "в PDF не найдено таблиц", code="no_tables")
 
         payload = {"tables": tables}
         if parsed.get("sheets"):

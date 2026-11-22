@@ -73,6 +73,7 @@ async def test_pipeline_no_tables() -> None:
 
     assert isinstance(result, ConvertFail)
     assert result.status_code == 422
+    assert result.code == "no_tables"
     assert "таблиц" in result.detail
 
 
@@ -116,6 +117,30 @@ def test_convert_scanned_returns_offer(tmp_path) -> None:
     assert detail["offer"]["price_rub"] == 299
     assert detail["offer"]["period"] == "month"
     assert "мес" in detail["offer"]["cta"]
+
+
+def test_convert_no_tables_returns_offer(tmp_path) -> None:
+    """Vector PDF with no detected tables → paid offer (same funnel as scan)."""
+
+    async def fake_convert(pdf_bytes: bytes, filename: str, **kwargs):
+        return ConvertFail(422, "в PDF не найдено таблиц", code="no_tables")
+
+    with (
+        patch("pdfexel_api.jobs.jobs_dir", return_value=tmp_path),
+        patch("pdfexel_api.api.convert_pdf_bytes", side_effect=fake_convert),
+    ):
+        r = client.post(
+            "/convert",
+            files={"file": ("vector-table.pdf", b"%PDF", "application/pdf")},
+        )
+
+    assert r.status_code == 422
+    detail = r.json()["detail"]
+    assert detail["code"] == "no_tables"
+    assert detail["offer"]["price_rub"] == 299
+    assert detail["offer"]["period"] == "month"
+    assert "мес" in detail["offer"]["cta"]
+    assert detail.get("message")
 
 
 def test_ocr_interest_appends(tmp_path, monkeypatch) -> None:

@@ -21,7 +21,7 @@ Env:
 
 - `PDF_STAND_URL` (default `http://127.0.0.1:8131/parse`)
 - `JSON_STAND_URL` (default `http://127.0.0.1:8132/convert`)
-- `STAND_TIMEOUT_S` (default `120`)
+- `STAND_TIMEOUT_S` (default `240`) — толстые PDF (20+ стр.) у pdf-stand могут занимать ~2.5 мин
 - `MAX_UPLOAD_BYTES` (default 25 MB)
 - `JOBS_DIR` (default `/data/jobs`) — на VPS: `/var/lib/pdfexel/jobs`
 - `SMTP_HOST` / `SMTP_PORT` / `SMTP_USER` / `SMTP_PASSWORD` / `SMTP_FROM` — OTP (как gosphoto: `mail.antonbutov.com`)

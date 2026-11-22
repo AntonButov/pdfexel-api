@@ -6,7 +6,7 @@ services:
     environment:
       - PDF_STAND_URL=http://host.docker.internal:8131/parse
       - JSON_STAND_URL=http://host.docker.internal:8132/convert
-      - STAND_TIMEOUT_S=120
+      - STAND_TIMEOUT_S=240
       - JOBS_DIR=/data/jobs
       - SMTP_HOST=${SMTP_HOST:-mail.antonbutov.com}
       - SMTP_PORT=${SMTP_PORT:-587}

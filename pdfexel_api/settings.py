@@ -21,7 +21,7 @@ def ocr_interest_log() -> Path:
     return Path(os.environ.get("OCR_INTEREST_LOG", str(jobs_dir() / "ocr-interest.jsonl")))
 
 
-TIMEOUT_S = float(os.environ.get("STAND_TIMEOUT_S", "120"))
+TIMEOUT_S = float(os.environ.get("STAND_TIMEOUT_S", "240"))
 MAX_BYTES = int(os.environ.get("MAX_UPLOAD_BYTES", str(25 * 1024 * 1024)))
 
 SMTP_HOST = os.environ.get("SMTP_HOST", "mail.antonbutov.com").strip()

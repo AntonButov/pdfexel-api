@@ -304,6 +304,21 @@ async def convert(request: Request, file: UploadFile = File(...)) -> Response:
                     },
                 },
             )
+        if result.code == "no_tables":
+            raise HTTPException(
+                status_code=422,
+                detail={
+                    "code": "no_tables",
+                    "message": result.detail,
+                    "offer": {
+                        "heading": "Сложная таблица",
+                        "title": "Таблицу не удалось разобрать автоматически — нужна платная обработка. Подписка открывает разбор на месяц.",
+                        "price_rub": 299,
+                        "period": "month",
+                        "cta": "Оплатить 299 ₽/мес",
+                    },
+                },
+            )
         raise HTTPException(status_code=result.status_code, detail=result.detail)
 
     assert isinstance(result, ConvertOk)
